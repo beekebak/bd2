@@ -1,0 +1,146 @@
+@page
+@model bd2.Web.Pages.OriginsModel
+@Html.AntiForgeryToken()
+
+<h1>Первоисточники</h1>
+
+<button type="button" class="btn btn-success" onclick="showAddOriginForm()">Добавить первоисточник</button>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Название первоисточника</th>
+            <th>Композитор</th>
+            <th>Писатель</th>
+            <th>Действия</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var origin in Model.OriginsList)
+        {
+            <tr>
+                <td>@origin.OriginName</td>
+                <td><a href="/Authors">@origin.OriginComposer.AuthorName</a></td>
+                <td><a href="/Authors">@origin.Writer.AuthorName</a></td>
+                <td>
+                    <button type="button" class="btn btn-danger" onclick="deleteOrigin(@origin.OriginId)">Удалить</button>
+                    <button type="button" class="btn btn-primary" onclick="showUpdateForm(@origin.OriginId, '@origin.OriginName', @origin.OriginComposer.Id, @origin.Writer.Id)">Изменить</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div id="addOriginForm" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid #ccc; z-index: 1000;">
+    <h2>Добавить первоисточник</h2>
+    <form method="post" asp-page-handler="Add">
+        <div class="form-group">
+            <label for="OriginName">Название первоисточника:</label>
+            <input type="text" class="form-control" id="addOriginName" name="OriginName" required>
+        </div>
+        <div class="form-group">
+            <label for="OriginComposerId">Композитор:</label>
+            <select class="form-control" id="addOriginComposerId" name="OriginComposerId">
+                <option value="">Выберите композитора</option>
+                @foreach (var author in Model.ComposersList)
+                {
+                    <option value="@author.Id">@author.AuthorName</option>
+                }
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="WriterId">Писатель:</label>
+            <select class="form-control" id="addWriterId" name="WriterId">
+                <option value="">Выберите писателя</option>
+                @foreach (var author in Model.WritersList)
+                {
+                    <option value="@author.Id">@author.AuthorName</option>
+                }
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Добавить</button>
+        <button type="button" class="btn btn-secondary" onclick="hideAddOriginForm()">Отмена</button>
+    </form>
+</div>
+
+<div id="updateForm" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid #ccc; z-index: 1000;">
+    <h2>Изменить первоисточник</h2>
+    <form method="post" asp-page-handler="Update">
+        <input type="hidden" id="originId" name="originId" />
+        <div class="form-group">
+            <label for="OriginName">Название первоисточника:</label>
+            <input type="text" class="form-control" id="updateOriginName" name="OriginName" required>
+        </div>
+        <div class="form-group">
+            <label for="OriginComposerId">Композитор:</label>
+            <select class="form-control" id="updateOriginComposerId" name="OriginComposerId">
+                <option value="">Выберите композитора</option>
+                @foreach (var author in Model.ComposersList)
+                {
+                    <option value="@author.Id">@author.AuthorName</option>
+                }
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="WriterId">Писатель:</label>
+            <select class="form-control" id="updateWriterId" name="WriterId">
+                <option value="">Выберите писателя</option>
+                @foreach (var author in Model.WritersList)
+                {
+                    <option value="@author.Id">@author.AuthorName</option>
+                }
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <button type="button" class="btn btn-secondary" onclick="hideUpdateForm()">Отмена</button>
+    </form>
+</div>
+
+<div id="overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 999;"></div>
+
+<script>
+    function showAddOriginForm() {
+        document.getElementById('addOriginForm').style.display = 'block';
+        document.getElementById('overlay').style.display = 'block';
+    }
+
+    function hideAddOriginForm() {
+        document.getElementById('addOriginForm').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+    }
+
+    function deleteOrigin(originId) {
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+        fetch(window.location.pathname + '?handler=Delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'RequestVerificationToken': token
+            },
+            body: new URLSearchParams({ originId: originId })
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Ошибка удаления первоисточника.');
+            }
+        }).catch(error => {
+            alert('Ошибка сети при удалении первоисточника.');
+            console.error('Fetch error:', error);
+        });
+    }
+
+    function showUpdateForm(originId, originName, composerId, writerId) {
+        document.getElementById('originId').value = originId;
+        document.getElementById('updateOriginName').value = originName;
+        document.getElementById('updateOriginComposerId').value = composerId;
+        document.getElementById('updateWriterId').value = writerId;
+        document.getElementById('updateForm').style.display = 'block';
+        document.getElementById('overlay').style.display = 'block';
+    }
+
+    function hideUpdateForm() {
+        document.getElementById('updateForm').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+    }
+</script>

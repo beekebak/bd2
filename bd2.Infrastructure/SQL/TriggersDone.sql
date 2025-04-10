@@ -1,15 +1,15 @@
 CREATE OR REPLACE FUNCTION cancel_performances_on_artist_dismissal() RETURNS TRIGGER AS $$
 BEGIN
     DELETE FROM Performances
-    WHERE PerformanceId IN (
-        SELECT p.PerformanceId
+    WHERE Id IN (
+        SELECT p.Id
         FROM Performances p
-                 LEFT JOIN ArtistsInPerformances aip ON p.PerformanceId = aip.PerformanceId
-        WHERE aip.ArtistId = OLD.ArtistID
+                 LEFT JOIN ArtistsInPerformances aip ON p.Id = aip.PerformanceId
+        WHERE aip.ArtistId = OLD.ID
     );
 
     DELETE FROM ArtistsInPerformances
-    WHERE ArtistId = OLD.ArtistId;
+    WHERE ArtistId = OLD.Id;
 
     RETURN OLD;
 END;
@@ -19,33 +19,50 @@ CREATE TRIGGER trigger_cancel_performances
     BEFORE DELETE ON Artists
     FOR EACH ROW EXECUTE FUNCTION cancel_performances_on_artist_dismissal();
 
-CREATE OR REPLACE FUNCTION check_staging_artists()
+CREATE OR REPLACE FUNCTION check_performance_artists()
     RETURNS TRIGGER AS $$
 DECLARE
-    only_trainees BOOLEAN;
+    performance_id INT;
+    total_count INT;
+    trainee_count INT;
 BEGIN
-    SELECT COUNT(*) = COUNT(CASE WHEN a.Grade = 'Стажер' THEN 1 END)
-    INTO only_trainees
-    FROM ArtistsInPerformances aip
-             JOIN Artists a ON aip.ArtistId = a.ArtistId
-    WHERE aip.PerformanceId = NEW.PerformanceId;
+    FOR performance_id IN
+        SELECT DISTINCT PerformanceId FROM ArtistsInPerformances
+        LOOP
+            SELECT COUNT(*) INTO total_count
+            FROM ArtistsInPerformances aip
+                     JOIN Artists a ON a.Id = aip.ArtistId
+            WHERE aip.PerformanceId = performance_id;
 
-    IF only_trainees THEN
-        RAISE EXCEPTION 'Нельзя создать постановку только из стажеров!';
-    END IF;
+            SELECT COUNT(*) INTO trainee_count
+            FROM ArtistsInPerformances aip
+                     JOIN Artists a ON a.Id = aip.ArtistId
+            WHERE aip.PerformanceId = performance_id
+              AND a.Grade = 'Стажер';
 
-    RETURN NEW;
+            IF total_count > 0 AND trainee_count = total_count THEN
+                RAISE EXCEPTION 'Постановка % не может состоять только из стажёров.', performance_id;
+            END IF;
+        END LOOP;
+
+    RETURN NULL; 
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_check_staging_artists
-    BEFORE INSERT ON Performances
-    FOR EACH ROW EXECUTE FUNCTION check_staging_artists();
+CREATE TRIGGER trg_check_performances_before_staging_update
+    AFTER UPDATE ON ArtistsInPerformances
+    FOR EACH STATEMENT
+EXECUTE FUNCTION check_performance_artists();
+
+CREATE TRIGGER trg_check_performances_after_staging_insert
+    AFTER INSERT ON ArtistsInPerformances
+    FOR EACH STATEMENT
+EXECUTE FUNCTION check_performance_artists();
 
 CREATE OR REPLACE FUNCTION check_performances_before_staging_update()
     RETURNS TRIGGER AS $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM Performances WHERE StagingId = OLD.StagingId) THEN
+    IF EXISTS (SELECT 1 FROM Performances WHERE StagingId = OLD.Id) THEN
         RAISE EXCEPTION 'Нельзя обновить постановку, для которой уже есть выступления.';
     END IF;
     RETURN NEW;
@@ -63,9 +80,9 @@ BEGIN
     IF EXISTS (
         SELECT 1
         FROM Performances p
-                 JOIN Staging s ON p.StagingId = s.StagingId
-                 JOIN NeededInventory ni ON s.StagingId = ni.StagingId
-        WHERE ni.InventoryId = OLD.InventoryId
+                 JOIN Staging s ON p.StagingId = s.Id
+                 JOIN NeededInventory ni ON s.Id = ni.StagingId
+        WHERE ni.InventoryId = OLD.Id
     ) THEN
         RAISE EXCEPTION 'Нельзя изменить количество инвентаря, если он используется в постановках.';
     END IF;
@@ -84,8 +101,8 @@ BEGIN
     IF EXISTS (
         SELECT 1
         FROM Performances p
-                 JOIN Staging s ON p.StagingId = s.StagingId
-        WHERE s.StagingId = OLD.StagingId
+                 JOIN Staging s ON p.StagingId = s.Id
+        WHERE s.Id = OLD.StagingId
     ) THEN
         RAISE EXCEPTION 'Нельзя изменить количество необходимого инвентаря, если есть связанные выступления.';
     END IF;
@@ -137,11 +154,11 @@ DECLARE
 BEGIN
     SELECT Specialty INTO composer_specialty
     FROM Workers
-    WHERE WorkerId = NEW.StagingComposerId;
+    WHERE Id = NEW.StagingComposerId;
 
     SELECT Specialty INTO director_specialty
     FROM Workers
-    WHERE WorkerId = NEW.DirectorId;
+    WHERE Id = NEW.DirectorId;
 
     IF composer_specialty != 'Композитор' THEN
         RAISE EXCEPTION 'Композитор постановки должен иметь специальность "Композитор".';
@@ -166,7 +183,7 @@ BEGIN
     IF EXISTS (
         SELECT 1
         FROM Performances
-        WHERE HallId = OLD.HallId
+        WHERE HallId = OLD.Id
     ) THEN
         RAISE EXCEPTION 'Нельзя обновить зал, если есть связанные выступления.';
     END IF;
@@ -185,7 +202,7 @@ BEGIN
     IF EXISTS (
         SELECT 1
         FROM NeededInventory
-        WHERE InventoryId = OLD.InventoryId
+        WHERE InventoryId = OLD.Id
     ) THEN
         RAISE EXCEPTION 'Нельзя удалить инвентарь, который используется в постановках.';
     END IF;

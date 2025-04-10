@@ -1,0 +1,195 @@
+@page
+@using bd2.Core.Worker
+@model bd2.Web.Pages.WorkersModel
+@Html.AntiForgeryToken()
+
+<h1>Работники</h1>
+
+<button type="button" class="btn btn-success" onclick="showAddWorkerForm()">Добавить работника</button>
+<button type="button" class="btn btn-success" onclick="showAddArtistForm()">Добавить актера</button>
+
+<table class="table">
+    <thead>
+    <tr>
+        <th>Имя</th>
+        <th>Специальность</th>
+        <th>Грейд</th>
+        <th>Действия</th>
+    </tr>
+    </thead>
+    <tbody>
+    @foreach (var worker in Model.WorkersList)
+    {
+        if (worker is Artist artist)
+        {
+            <tr>
+                <td>@artist.Name</td>
+                <td>@artist.Specialty</td>
+                <td>@artist.Grade</td>
+                <td>
+                    @if (User.IsInRole("director"))
+                    {
+                        <button type="button" class="btn btn-danger" onclick="deleteWorker(@artist.Id)">Удалить</button>
+                    }
+                    <button type="button" class="btn btn-primary" onclick="showUpdateArtistForm(@worker.Id, '@worker.Name', '@worker.Specialty', '@artist.Grade')">Изменить</button>
+                </td>
+            </tr>
+        }
+        else {
+            <tr>
+                <td>@worker.Name</td>
+                <td>@worker.Specialty</td>
+                <td></td>
+                <td>
+                    @if (User.IsInRole("director"))
+                    {
+                        <button type="button" class="btn btn-danger" onclick="deleteWorker(@worker.Id)">Удалить</button>
+
+                    }
+                    <button type="button" class="btn btn-primary" onclick="showUpdateWorkerForm(@worker.Id, '@worker.Name', '@worker.Specialty')">Изменить</button>
+                </td>
+            </tr>
+        }
+    }
+    </tbody>
+</table>
+
+@if (User.IsInRole("director"))
+{
+    <div id="addWorkerForm" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid #ccc; z-index: 1000;">
+        <h2>Добавить работника</h2>
+        <form method="post" asp-page-handler="AddWorker">
+            <div class="form-group">
+                <label for="Name">Имя:</label>
+                <input type="text" class="form-control" id="addWorkerName" name="Name" required>
+            </div>
+            <div class="form-group">
+                <label for="Specialty">Специальность:</label>
+                <input type="text" class="form-control" id="addWorkerSpecialty" name="Specialty" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Добавить работника</button>
+            <button type="button" class="btn btn-secondary" onclick="hideAddWorkerForm()">Отмена</button>
+        </form>
+    </div>
+
+    <div id="addArtistForm" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid #ccc; z-index: 1000;">
+        <h2>Добавить артиста</h2>
+        <form method="post" asp-page-handler="AddArtist">
+            <div class="form-group">
+                <label for="Name">Имя:</label>
+                <input type="text" class="form-control" id="addArtistName" name="Name" required>
+            </div>
+            <div class="form-group">
+                <label for="Grade">Грейд:</label>
+                <input type="text" class="form-control" id="addArtistGrade" name="Grade" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Добавить артиста</button>
+            <button type="button" class="btn btn-secondary" onclick="hideAddArtistForm()">Отмена</button>
+        </form>
+    </div>
+}
+
+<div id="updateArtistForm" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid #ccc; z-index: 1000;">
+    <h2>Изменить артиста</h2>
+    <form method="post" asp-page-handler="UpdateArtist">
+        <input type="hidden" id="artistId" name="workerId" />
+        <div class="form-group">
+            <label for="name">Имя:</label>
+            <input type="text" class="form-control" id="updateArtistName" name="Name" required>
+        </div>
+        <div class="form-group">
+            <label for="grade">Грейд:</label>
+            <input type="text" class="form-control" id="updateGrade" name="Grade" />
+        </div>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <button type="button" class="btn btn-secondary" onclick="hideUpdateArtistForm()">Отмена</button>
+    </form>
+</div>
+
+<div id="updateWorkerForm" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid #ccc; z-index: 1000;">
+    <h2>Изменить работника</h2>
+    <form method="post" asp-page-handler="UpdateWorker">
+        <input type="hidden" id="workerId" name="workerId" />
+        <div class="form-group">
+            <label for="name">Имя:</label>
+            <input type="text" class="form-control" id="updateName" name="Name" required>
+        </div>
+        <div class="form-group">
+            <label for="specialty">Специальность:</label>
+            <input type="text" class="form-control" id="updateSpecialty" name="Specialty" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <button type="button" class="btn btn-secondary" onclick="hideUpdateWorkerForm()">Отмена</button>
+    </form>
+</div>
+
+<div id="overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 999;"></div>
+
+<script>
+    function deleteWorker(workerId) {
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+        fetch(window.location.pathname + '?handler=Delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'RequestVerificationToken': token
+            },
+            body: new URLSearchParams({ workerId: workerId })
+        }).then(response => {
+            if (response.ok) {
+                location.reload(); // Перезагрузка страницы после удаления
+            } else {
+                alert('Ошибка удаления работника.');
+            }
+        }).catch(error => {
+            alert('Ошибка сети при удалении работника.');
+            console.error('Fetch error:', error);
+        });
+    }
+
+    function showUpdateWorkerForm(workerId, name, specialty) {
+        document.getElementById('workerId').value = workerId;
+        document.getElementById('updateName').value = name;
+        document.getElementById('updateSpecialty').value = specialty;
+        document.getElementById('updateWorkerForm').style.display = 'block';
+        document.getElementById('overlay').style.display = 'block';
+    }
+
+    function hideUpdateWorkerForm() {
+        document.getElementById('updateWorkerForm').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+    }
+
+    function showUpdateArtistForm(workerId, name, specialty, grade) {
+        document.getElementById('artistId').value = workerId;
+        document.getElementById('updateArtistName').value = name;
+        document.getElementById('updateGrade').value = grade;
+        document.getElementById('updateArtistForm').style.display = 'block';
+        document.getElementById('overlay').style.display = 'block';
+    }
+
+    function hideUpdateArtistForm() {
+        document.getElementById('updateArtistForm').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+    }
+
+    function showAddWorkerForm() {
+        document.getElementById('addWorkerForm').style.display = 'block';
+        document.getElementById('overlay').style.display = 'block';
+    }
+
+    function hideAddWorkerForm() {
+        document.getElementById('addWorkerForm').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+    }
+
+    function showAddArtistForm() {
+        document.getElementById('addArtistForm').style.display = 'block';
+        document.getElementById('overlay').style.display = 'block';
+    }
+
+    function hideAddArtistForm() {
+        document.getElementById('addArtistForm').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+    }
+</script>

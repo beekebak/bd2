@@ -1,0 +1,8 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="SupportDbFunctionsDone.sql" type="DatabaseScript" editBeforeRun="true" nameIsGenerated="true">
+    <script-file value="$PROJECT_DIR$/bd2.Infrastructure/SQL/SupportDbFunctionsDone.sql" />
+    <script-mode>FILE</script-mode>
+    <data-source id="ac3e4ef4-49cd-4c5e-80c2-c787f4463051" />
+    <method v="2" />
+  </configuration>
+</component>

@@ -7,7 +7,7 @@ namespace bd2.Infrastructure.Repositories;
 
 public class OriginRepository(
     GenericRepository<OriginDto> originRepository,
-    IGenericRepository<Author> authorRepository) : IOriginRepository
+    IAuthorRepository authorRepository) : IOriginRepository
 {
     private GenericRepository<OriginDto> _originRepository = originRepository;
     private IGenericRepository<Author> _authorRepository = authorRepository;
@@ -25,6 +25,8 @@ public class OriginRepository(
     {
         if (ids == null || ids.Length == 0)
             return [];
+        
+        ids = ids.Distinct().ToArray();
             
         var originDtos = _originRepository.GetByIds(ids).ToList();
         if(originDtos.Count < ids.Length) throw new EntityNotFoundException(nameof(OriginDto));
@@ -37,25 +39,25 @@ public class OriginRepository(
         return MapOriginDtosToOrigins(originDtos);
     }
 
-    public void Create(Origin entity)
+    public int Create(Origin entity)
     {
         var originDto = new OriginDto
         {
             OriginName = entity.OriginName,
-            OriginComposerId = entity.OriginComposer.id,
-            WriterId = entity.Writer.id
+            OriginComposerId = entity.OriginComposer.Id,
+            WriterId = entity.Writer.Id
         };
-        _originRepository.Create(originDto);
+        return _originRepository.Create(originDto);
     }
 
     public void Update(Origin entity)
     {
         var originDto = new OriginDto
         {
-            OriginId = entity.OriginId,
+            Id = entity.OriginId,
             OriginName = entity.OriginName,
-            OriginComposerId = entity.OriginComposer.id,
-            WriterId = entity.Writer.id
+            OriginComposerId = entity.OriginComposer.Id,
+            WriterId = entity.Writer.Id
         };
         _originRepository.Update(originDto);
     }
@@ -73,17 +75,18 @@ public class OriginRepository(
         if (composer == null || writer == null)
             throw new EntityNotFoundException(nameof(AuthorDto));
 
-        return new Origin(originDto.OriginId, originDto.OriginName, writer, composer);
+        return new Origin(originDto.Id, originDto.OriginName, writer, composer);
     }
     
     private IEnumerable<Origin> MapOriginDtosToOrigins(IEnumerable<OriginDto> originDtos)
     {
         originDtos = originDtos.ToList();
+        if (!originDtos.Any()) return [];
         var composerIds = originDtos.Select(dto => dto.OriginComposerId).ToList();
         var writerIds = originDtos.Select(dto => dto.WriterId).ToList();
         var authorIds = composerIds.Union(writerIds).ToList();
 
-        var authors = _authorRepository.GetByIds(authorIds.ToArray()).ToDictionary(a => a.id);
+        var authors = _authorRepository.GetByIds(authorIds.ToArray()).ToDictionary(a => a.Id);
 
         return originDtos.Select(dto =>
         {
@@ -93,7 +96,7 @@ public class OriginRepository(
             if (composer == null || writer == null)
                 throw new EntityNotFoundException(nameof(AuthorDto));
 
-            return new Origin(dto.OriginId, dto.OriginName, writer, composer);
+            return new Origin(dto.Id, dto.OriginName, writer, composer);
         });
     }
 }

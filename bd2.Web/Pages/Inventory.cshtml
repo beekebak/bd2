@@ -1,0 +1,111 @@
+@page
+@model bd2.Web.Pages.InventoryModel
+@Html.AntiForgeryToken()
+
+<h1>Инвентарь</h1>
+
+<button type="button" class="btn btn-success" onclick="showAddForm()">Добавить элемент</button>
+
+<table class="table">
+    <thead>
+    <tr>
+        <th>Название</th>
+        <th>Количество</th>
+        <th>Действия</th>
+    </tr>
+    </thead>
+    <tbody>
+    @foreach (var item in Model.InventoryItems)
+    {
+        <tr>
+            <td>@item.Name</td>
+            <td>@item.TotalAmount</td>
+            <td>
+                <button type="button" class="btn btn-danger" onclick="deleteItem(@item.InventoryId)">Удалить</button>
+                <button type="button" class="btn btn-primary" onclick="showUpdateForm(@item.InventoryId, '@item.Name', @item.TotalAmount)">Изменить</button>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+
+<div id="addForm" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid #ccc; z-index: 1000;">
+    <h2>Добавить элемент</h2>
+    <form method="post" asp-page-handler="Add">
+        <div class="form-group">
+            <label for="InventoryName">Название:</label>
+            <input type="text" class="form-control" id="addName" name="InventoryName" required>
+        </div>
+        <div class="form-group">
+            <label for="TotalAmount">Количество:</label>
+            <input type="number" class="form-control" id="addAmount" name="TotalAmount" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Добавить</button>
+        <button type="button" class="btn btn-secondary" onclick="hideAddForm()">Отмена</button>
+    </form>
+</div>
+
+<div id="updateForm" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid #ccc; z-index: 1000;">
+    <h2>Изменить элемент</h2>
+    <form method="post" asp-page-handler="Update">
+        <input type="hidden" id="itemId" name="itemId" />
+        <div class="form-group">
+            <label for="InventoryName">Название:</label>
+            <input type="text" class="form-control" id="updateName" name="InventoryName" required>
+        </div>
+        <div class="form-group">
+            <label for="TotalAmount">Количество:</label>
+            <input type="number" class="form-control" id="updateAmount" name="TotalAmount" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <button type="button" class="btn btn-secondary" onclick="hideUpdateForm()">Отмена</button>
+    </form>
+</div>
+
+<div id="overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 999;"></div>
+
+<script>
+    function deleteItem(itemId) {
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+        fetch(window.location.pathname + '?handler=Delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'RequestVerificationToken': token
+            },
+            body: new URLSearchParams({ itemId: itemId })
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Ошибка удаления элемента.');
+            }
+        }).catch(error => {
+            alert('Ошибка сети при удалении элемента.');
+            console.error('Fetch error:', error);
+        });
+    }
+
+    function showUpdateForm(itemId, itemName, itemAmount) {
+        document.getElementById('itemId').value = itemId;
+        document.getElementById('updateName').value = itemName;
+        document.getElementById('updateAmount').value = itemAmount;
+        document.getElementById('updateForm').style.display = 'block';
+        document.getElementById('overlay').style.display = 'block';
+    }
+
+    function hideUpdateForm() {
+        document.getElementById('updateForm').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+    }
+
+    function showAddForm() {
+        document.getElementById('addForm').style.display = 'block';
+        document.getElementById('overlay').style.display = 'block';
+    }
+
+    function hideAddForm() {
+        document.getElementById('addForm').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+    }
+</script>

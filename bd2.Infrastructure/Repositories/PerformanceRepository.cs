@@ -12,13 +12,15 @@ public class PerformanceRepository(
     GenericRepository<PerformanceDto> performanceRepository,
     IStagingRepository stagingRepository,
     IHallRepository hallRepository,
-    GenericRepository<ArtistsInPerformanceDto> artistsInPerformanceRepository) : IPerformanceRepository
+    GenericRepository<ArtistsInPerformanceDto> artistsInPerformanceRepository,
+    GenericRepository<RoleDto> roleRepository) : IPerformanceRepository
 {
     private GenericRepository<PerformanceDto> _performanceRepository = performanceRepository;
     private IStagingRepository _stagingRepository = stagingRepository;
     private IHallRepository _hallRepository = hallRepository;
     private GenericRepository<ArtistsInPerformanceDto> _artistsInPerformanceRepository = artistsInPerformanceRepository;
-
+    private GenericRepository<RoleDto> _roleRepository = roleRepository;
+    
     public Performance? GetById(int id)
     {
         var performanceDto = _performanceRepository.GetById(id);
@@ -32,6 +34,8 @@ public class PerformanceRepository(
     {
         if (ids == null || ids.Length == 0)
             return [];
+        
+        ids = ids.Distinct().ToArray();
             
         var performanceDtos = _performanceRepository.GetByIds(ids.Select(x => x).ToArray()).ToList();
         if(performanceDtos.Count < ids.Length) throw new EntityNotFoundException(nameof(PerformanceDto));
@@ -44,7 +48,7 @@ public class PerformanceRepository(
         return MapPerformanceDtosToPerformances(performanceDtos);
     }
 
-    public void Create(Performance entity)
+    public int Create(Performance entity)
     {
         var artistsData = entity.Artists.Select(a => new { artist_id = a.ArtistId, role_id = a.RoleId });
         var artistsJson = JsonSerializer.Serialize(artistsData);
@@ -52,12 +56,12 @@ public class PerformanceRepository(
         var parameters = new Dictionary<string, object>
         {
             { "@p_start_date_time", entity.StartDate },
-            { "@p_staging_id", entity.StagingId.Id },
+            { "@p_staging_id", entity.Staging.Id },
             { "@p_hall_id", entity.Hall.HallId },
             { "@p_artists_data", artistsJson }
         };
 
-        _performanceRepository.ExecuteCommand("SELECT add_performance(@p_start_date_time, @p_staging_id, @p_hall_id, @p_artists_data)", parameters);
+        return _performanceRepository.ExecuteScalar<int>("SELECT add_performance(@p_start_date_time, @p_staging_id, @p_hall_id, @p_artists_data::jsonb)", parameters);
     }
 
     public void MovePerformanceToHall(int performanceId, int newHallId)
@@ -96,19 +100,19 @@ public class PerformanceRepository(
 
         var performanceDto = new PerformanceDto
         {
-            PerformanceId = entity.Id,
+            Id = entity.Id,
             StartDateTime = entity.StartDate,
-            StagingId = entity.StagingId.Id,
+            StagingId = entity.Staging.Id,
             HallId = entity.Hall.HallId,
             SoldTicketsCount = entity.SoldTicketsCount
         };
         _performanceRepository.Update(performanceDto);
     }
     
-    public IEnumerable<Performance> FilterPerformances(PerformanceFilter filter)
+    public IEnumerable<PerformanceFilterWrapper> FilterPerformances(PerformanceFilter filter)
     {
         var parameters = new Dictionary<string, object>();
-        string query = "SELECT PerformanceId FROM AllPerformancesData WHERE 1=1";
+        string query = "SELECT * FROM AllPerformancesData WHERE 1=1";
 
         if (filter.StartDateTimeFrom.HasValue)
         {
@@ -158,20 +162,14 @@ public class PerformanceRepository(
             parameters.Add("@ArtistName", filter.ArtistName);
         }
 
-        var performanceIds = _performanceRepository.ExecuteQuery<PerformanceIdWrapper>(query, parameters).Select(x => x.PerformanceId).ToArray();
+        return _performanceRepository.ExecuteQuery<PerformanceFilterWrapper>(query, parameters);
+    }
 
-        return GetByIds(performanceIds);
+    public IEnumerable<Role> GetRoles(int[] ids)
+    {
+        return _roleRepository.GetByIds(ids).Select(x => new Role(x.Id, x.RoleName));
     }
     
-    public IEnumerable<BusyResources> GetBusyArtistsAndHalls(DateTime checkTime)
-    {
-        var parameters = new Dictionary<string, object>
-        {
-            { "@p_check_time", checkTime }
-        };
-
-        return _performanceRepository.ExecuteQuery<BusyResources>("SELECT * FROM get_busy_artists_and_halls(@p_check_time)", parameters);
-    }
     
     public void BuyTicket(int performanceId)
     {
@@ -180,7 +178,7 @@ public class PerformanceRepository(
             { "@p_performance_id", performanceId }
         };
 
-        _performanceRepository.ExecuteCommand("SELECT buy_ticket(@p_performance_id)", parameters);
+        _performanceRepository.ExecuteCommand("CALL buy_ticket(@p_performance_id)", parameters);
     }
 
     public void ReturnTicket(int performanceId)
@@ -190,7 +188,7 @@ public class PerformanceRepository(
             { "@performance_id", performanceId }
         };
 
-        _performanceRepository.ExecuteCommand("SELECT return_ticket(@performance_id)", parameters);
+        _performanceRepository.ExecuteCommand("CALL return_ticket(@performance_id)", parameters);
     }
 
 
@@ -207,18 +205,19 @@ public class PerformanceRepository(
         if (staging == null || hall == null)
             throw new EntityNotFoundException(nameof(Staging));
 
-        var artistsInPerformanceDtos = _artistsInPerformanceRepository.ExecuteQuery<ArtistsInPerformanceDto>("SELECT * FROM ArtistsInPerformances WHERE PerformanceId = @Id", new Dictionary<string, object> { { "@Id", performanceDto.PerformanceId } });
+        var artistsInPerformanceDtos = _artistsInPerformanceRepository.ExecuteQuery<ArtistsInPerformanceDto>("SELECT * FROM ArtistsInPerformances WHERE PerformanceId = @Id", new Dictionary<string, object> { { "@Id", performanceDto.Id } });
         var artists = artistsInPerformanceDtos.Select(dto => new Performance.ArtistsInPerformance(dto.ArtistId, dto.RoleId)).ToList();
 
-        return new Performance(performanceDto.PerformanceId, performanceDto.StartDateTime, staging, hall, performanceDto.SoldTicketsCount, artists);
+        return new Performance(performanceDto.Id, performanceDto.StartDateTime, staging, hall, performanceDto.SoldTicketsCount, artists);
     }
     
     private IEnumerable<Performance> MapPerformanceDtosToPerformances(IEnumerable<PerformanceDto> performanceDtos)
     {
         performanceDtos = performanceDtos.ToList();
+        if (!performanceDtos.Any()) return [];
         var stagingIds = performanceDtos.Select(dto => dto.StagingId).ToList();
         var hallIds = performanceDtos.Select(dto => dto.HallId).ToList();
-        var performanceIds = performanceDtos.Select(dto => dto.PerformanceId).ToList();
+        var performanceIds = performanceDtos.Select(dto => dto.Id).ToList();
 
         var stagings = _stagingRepository.GetByIds(stagingIds.ToArray()).ToDictionary(s => s.Id);
         var halls = _hallRepository.GetByIds(hallIds.ToArray()).ToDictionary(h => h.HallId);
@@ -235,9 +234,9 @@ public class PerformanceRepository(
             if (staging == null || hall == null)
                 throw new EntityNotFoundException(nameof(Staging));
 
-            var artists = artistsByPerformanceId.GetValueOrDefault(dto.PerformanceId, new List<Performance.ArtistsInPerformance>());
+            var artists = artistsByPerformanceId.GetValueOrDefault(dto.Id, new List<Performance.ArtistsInPerformance>());
 
-            return new Performance(dto.PerformanceId, dto.StartDateTime, staging, hall, dto.SoldTicketsCount, artists);
+            return new Performance(dto.Id, dto.StartDateTime, staging, hall, dto.SoldTicketsCount, artists);
         });
     }
 }

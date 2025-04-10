@@ -12,7 +12,7 @@ public class Performance(
 {
     public int Id { get; private set; } = id;
     public DateTime StartDate { get; private set; } = startDate;
-    public Staging StagingId { get; private set; } = staging;
+    public Staging Staging { get; private set; } = staging;
     public Hall Hall { get; private set; } = hall;
     public int SoldTicketsCount { get; private set; } = soldTicketsCount;
     public List<ArtistsInPerformance> Artists { get; private set; } = artists;

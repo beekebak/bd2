@@ -18,30 +18,34 @@ public class HallRepository : IHallRepository
     {
         var dto = _repository.GetById(id);
         if(dto == null) throw new EntityNotFoundException(nameof(HallDto));
-        return new Hall(dto.HallId, dto.Capacity);
+        return new Hall(dto.Id, dto.Capacity);
     }
 
     public IEnumerable<Hall> GetByIds(int[]? ids)
     {
+        if (ids == null || ids.Length == 0)
+            return [];
+        
+        ids = ids.Distinct().ToArray();
         var dtos = _repository.GetByIds(ids).ToList();
         if(ids != null && dtos.Count < ids.Length) throw new EntityNotFoundException(nameof(HallDto));
-        return dtos.Select(dto => new Hall(dto.HallId, dto.Capacity));
+        return dtos.Select(dto => new Hall(dto.Id, dto.Capacity));
     }
 
     public IEnumerable<Hall> GetAll()
     {
         var dtos = _repository.GetAll();
-        return dtos.Select(dto => new Hall(dto.HallId, dto.Capacity));
+        return dtos.Select(dto => new Hall(dto.Id, dto.Capacity));
     }
 
-    public void Create(Hall entity)
+    public int Create(Hall entity)
     {
         var dto = new HallDto
         {
             Capacity = entity.Capacity,
-            HallId = entity.HallId
+            Id = entity.HallId
         };
-        _repository.Create(dto);
+        return _repository.Create(dto);
     }
 
     public void Update(Hall entity)
@@ -49,7 +53,7 @@ public class HallRepository : IHallRepository
         var dto = new HallDto
         {
             Capacity = entity.Capacity,
-            HallId = entity.HallId
+            Id = entity.HallId
         };
         _repository.Update(dto);
     }

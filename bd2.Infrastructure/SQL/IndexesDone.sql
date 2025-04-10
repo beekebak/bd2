@@ -20,16 +20,12 @@ CREATE INDEX idx_authors_author_name ON Authors (AuthorName);
 CREATE INDEX idx_workers_name ON Workers (Name);
 CREATE INDEX idx_workers_specialty ON Workers (Specialty);
 
-CREATE INDEX idx_artists_artist_id ON Artists (ArtistId);
 CREATE INDEX idx_artists_grade ON Artists (Grade);
 
-CREATE INDEX idx_inventory_inventory_id ON Inventory (InventoryId);
 CREATE INDEX idx_inventory_inventory_name ON Inventory (InventoryName);
 
 CREATE INDEX idx_needed_inventory_staging_id ON NeededInventory (StagingId);
 CREATE INDEX idx_needed_inventory_inventory_id ON NeededInventory (InventoryId);
 CREATE INDEX idx_needed_inventory_both ON NeededInventory (StagingId, InventoryId);
-
-CREATE INDEX idx_halls_hall_id ON Halls (HallId);
 
 CREATE INDEX idx_roles_staging_id ON Roles (StagingId);

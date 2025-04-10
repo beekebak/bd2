@@ -3,11 +3,11 @@ CREATE OR REPLACE FUNCTION get_inventory_usage(p_check_time TIMESTAMP)
 AS $$
 BEGIN
     RETURN QUERY
-        SELECT ni.InventoryId, i.InventoryName, SUM(ni.Count) AS TotalInUse
+        SELECT ni.InventoryId, i.InventoryName, SUM(ni.Count)::INT AS TotalInUse
         FROM Performances p
-                 JOIN Staging s ON p.StagingId = s.StagingId
-                 JOIN NeededInventory ni ON s.StagingId = ni.StagingId
-                 JOIN Inventory i ON ni.InventoryId = i.InventoryId
+                 JOIN Staging s ON p.StagingId = s.Id
+                 JOIN NeededInventory ni ON s.Id = ni.StagingId
+                 JOIN Inventory i ON ni.InventoryId = i.Id
         WHERE p.StartDateTime <= p_check_time
           AND (p.StartDateTime + s.Duration) > p_check_time
         GROUP BY ni.InventoryId, i.InventoryName;
@@ -19,11 +19,11 @@ CREATE OR REPLACE FUNCTION get_inventory_usage_interval(p_start_time TIMESTAMP, 
 AS $$
 BEGIN
     RETURN QUERY
-        SELECT ni.InventoryId, i.InventoryName, SUM(ni.Count) AS TotalInUse
+        SELECT ni.InventoryId, i.InventoryName, SUM(ni.Count)::INT AS TotalInUse
         FROM Performances p
-                 JOIN Staging s ON p.StagingId = s.StagingId
-                 JOIN NeededInventory ni ON s.StagingId = ni.StagingId
-                 JOIN Inventory i ON ni.InventoryId = i.InventoryId
+                 JOIN Staging s ON p.StagingId = s.Id
+                 JOIN NeededInventory ni ON s.Id = ni.StagingId
+                 JOIN Inventory i ON ni.InventoryId = i.Id
         WHERE
             (
                 (p.StartDateTime < p_start_time + p_duration AND (p.StartDateTime + s.Duration) > p_start_time)
@@ -42,10 +42,10 @@ CREATE OR REPLACE FUNCTION get_busy_halls(p_check_time TIMESTAMP)
 AS $$
 BEGIN
     RETURN QUERY
-        SELECT DISTINCT h.HallId, h.Capacity
+        SELECT DISTINCT h.Id, h.Capacity
         FROM Performances p
-                 JOIN Halls h ON p.HallId = h.HallId
-                 JOIN Staging s ON p.StagingId = s.StagingId
+                 JOIN Halls h ON p.HallId = h.Id
+                 JOIN Staging s ON p.StagingId = s.Id
         WHERE p.StartDateTime <= p_check_time
           AND (p.StartDateTime + s.Duration) > p_check_time;
 END;
@@ -56,10 +56,10 @@ CREATE OR REPLACE FUNCTION get_busy_halls_interval(p_start_time TIMESTAMP, p_dur
 AS $$
 BEGIN
     RETURN QUERY
-        SELECT DISTINCT h.HallId, h.Capacity
+        SELECT DISTINCT h.Id, h.Capacity
         FROM Performances p
-                 JOIN Halls h ON p.HallId = h.HallId
-                 JOIN Staging s ON p.StagingId = s.StagingId
+                 JOIN Halls h ON p.HallId = h.Id
+                 JOIN Staging s ON p.StagingId = s.Id
         WHERE
             (
                 (p.StartDateTime < p_start_time + p_duration AND (p.StartDateTime + s.Duration) > p_start_time)
@@ -76,11 +76,11 @@ CREATE OR REPLACE FUNCTION get_busy_artists(p_check_time TIMESTAMP)
 AS $$
 BEGIN
     RETURN QUERY
-        SELECT DISTINCT a.ArtistId, a.Grade
+        SELECT DISTINCT a.Id, a.Grade
         FROM ArtistsInPerformances aip
-                 JOIN Performances p ON aip.PerformanceId = p.PerformanceId
-                 JOIN Staging s ON p.StagingId = s.StagingId
-                 JOIN Artists a ON aip.ArtistId = a.ArtistId
+                 JOIN Performances p ON aip.PerformanceId = p.Id
+                 JOIN Staging s ON p.StagingId = s.Id
+                 JOIN Artists a ON aip.ArtistId = a.Id
         WHERE p.StartDateTime <= p_check_time
           AND (p.StartDateTime + s.Duration) > p_check_time;
 END;
@@ -91,18 +91,13 @@ CREATE OR REPLACE FUNCTION get_busy_artists_interval(p_start_time TIMESTAMP, p_d
 AS $$
 BEGIN
     RETURN QUERY
-        SELECT DISTINCT a.ArtistId, a.Grade
+        SELECT DISTINCT a.Id, a.Grade
         FROM ArtistsInPerformances aip
-                 JOIN Performances p ON aip.PerformanceId = p.PerformanceId
-                 JOIN Staging s ON p.StagingId = s.StagingId
-                 JOIN Artists a ON aip.ArtistId = a.ArtistId
+                 JOIN Performances p ON aip.PerformanceId = p.Id
+                 JOIN Staging s ON p.StagingId = s.Id
+                 JOIN Artists a ON aip.ArtistId = a.Id
         WHERE
-            (                
-                (p.StartDateTime < p_start_time + p_duration AND (p.StartDateTime + s.Duration) > p_start_time)
-                    OR
-                (p.StartDateTime >= p_start_time AND p.StartDateTime < p_start_time + p_duration)
-                    OR
-                ((p.StartDateTime < p_start_time) AND (p.StartDateTime + s.Duration) > (p_start_time + p_duration))
+            (NOT ((p_start_time+p_duration < p.startdatetime) OR (p.startdatetime+s.duration < p_start_time))
                 );
 END;
 $$ LANGUAGE plpgsql;
@@ -155,7 +150,7 @@ BEGIN
                         SUM(ni.Count) AS TotalNeeded,
                         i.TotalAmount
                  FROM NeededInventory ni
-                          JOIN Inventory i ON ni.InventoryId = i.InventoryId
+                          JOIN Inventory i ON ni.InventoryId = i.Id
                  WHERE ni.StagingId = p_staging_id
                  GROUP BY ni.InventoryId, i.TotalAmount
              ) needed

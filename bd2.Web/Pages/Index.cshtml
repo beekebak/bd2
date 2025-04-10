@@ -1,0 +1,34 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Добро пожаловать!</h1>
+    @if (User.IsInRole("director") || User.IsInRole("storekeeper"))
+    {
+        <a href="/Inventory" class="btn btn-primary">Перейти к инвентарю</a>
+    }
+    @if (User.IsInRole("director") || User.IsInRole("manager"))
+    {
+        <a href="/Authors" class="btn btn-primary">Перейти к авторам</a>
+        <a href="/Origins" class="btn btn-primary">Перейти к первоисточникам</a>
+        <a href="/Halls" class="btn btn-primary">Перейти к залам</a>
+        <a href="/Workers" class="btn btn-primary">Перейти к работникам</a>
+    }
+    @if (User.IsInRole("director") || User.IsInRole("manager") || User.IsInRole("storekeeper"))
+    {
+        <a href="/Registration" class="btn btn-primary">Перейти к странице регистрации</a>
+    }
+    @if (User.IsInRole("director") || User.IsInRole("manager") || User.IsInRole("guest"))
+    {
+        <a href="/Stagings" class="btn btn-primary">Перейти к постановкам</a>
+        <a href="/Performances" class="btn btn-primary">Перейти к выступлениям</a>
+    }
+    @if (User.IsInRole("guest"))
+    {
+        <a href="/Poster" class="btn btn-primary">Перейти к афише</a>
+        <a href="/Repertoire" class="btn btn-primary">Перейти к репертуару</a>
+    }
+</div>

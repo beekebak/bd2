@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SqlDialectMappings">
+    <file url="file://$PROJECT_DIR$/bd2.Infrastructure/SQL/CreateTheatreSchemeDone.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/bd2.Infrastructure/SQL/IndexesDone.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/bd2.Infrastructure/SQL/SupportDbFunctionsDone.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/bd2.Infrastructure/SQL/TransactionsDone.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/bd2.Infrastructure/SQL/ViewsAndFunctionsDone.sql" dialect="PostgreSQL" />
+    <file url="PROJECT" dialect="PostgreSQL" />
+  </component>
+</project>

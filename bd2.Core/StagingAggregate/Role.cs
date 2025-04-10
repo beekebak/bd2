@@ -1,3 +1,3 @@
 namespace bd2.Core.StagingAggregate;
 
-public record Role(string Name);
+public record Role(int Id, string Name);

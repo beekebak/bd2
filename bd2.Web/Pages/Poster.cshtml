@@ -1,0 +1,71 @@
+@page
+@model bd2.Web.Pages.PosterModel
+@Html.AntiForgeryToken()
+
+<h1>Постановки</h1>
+
+<form method="get">
+    <div class="form-group">
+        <label for="StartDateTimeFrom">Дата начала (с):</label>
+        <input type="datetime-local" class="form-control" name="StartDateTimeFrom" value="@Model.Filter.StartDateTimeFrom?.ToString("yyyy-MM-ddTHH:mm")" />
+    </div>
+    <div class="form-group">
+        <label for="StartDateTimeTo">Дата начала (по):</label>
+        <input type="datetime-local" class="form-control" name="StartDateTimeTo" value="@Model.Filter.StartDateTimeTo?.ToString("yyyy-MM-ddTHH:mm")" />
+    </div>
+    <div class="form-group">
+        <label for="OriginName">Название первоисточника:</label>
+        <input type="text" class="form-control" name="OriginName" value="@Model.Filter.OriginName" />
+    </div>
+    <div class="form-group">
+        <label for="ComposerName">Имя композитора:</label>
+        <input type="text" class="form-control" name="ComposerName" value="@Model.Filter.ComposerName" />
+    </div>
+    <div class="form-group">
+        <label for="WriterName">Имя автора:</label>
+        <input type="text" class="form-control" name="WriterName" value="@Model.Filter.WriterName" />
+    </div>
+    <div class="form-group">
+        <label for="StagingComposerName">Имя композитора постановки:</label>
+        <input type="text" class="form-control" name="StagingComposerName" value="@Model.Filter.StagingComposerName" />
+    </div>
+    <div class="form-group">
+        <label for="DirectorName">Имя режиссера:</label>
+        <input type="text" class="form-control" name="DirectorName" value="@Model.Filter.DirectorName" />
+    </div>
+    <div class="form-group">
+        <label for="ArtistName">Имя актера:</label>
+        <input type="text" class="form-control" name="ArtistName" value="@Model.Filter.ArtistName" />
+    </div>
+    <button type="submit" class="btn btn-primary">Фильтровать</button>
+</form>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Дата начала</th>
+            <th>Название первоисточника</th>
+            <th>Композитор</th>
+            <th>Автор</th>
+            <th>Композитор постановки</th>
+            <th>Режиссер</th>
+            <th>Актеры</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var performance in Model.Performances)
+        {
+            <tr>
+                <td>@performance.StartDateTime</td>
+                <td>@performance.OriginName</td>
+                <td>@performance.ComposerName</td>
+                <td>@performance.WriterName</td>
+                <td>@performance.StagingComposerName</td>
+                <td>@performance.DirectorName</td>
+                <td>
+                    @string.Join(" ", performance.ArtistNames)
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

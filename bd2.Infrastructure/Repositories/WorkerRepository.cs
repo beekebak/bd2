@@ -19,41 +19,47 @@ public class WorkerRepository : IWorkerRepository
     public Worker GetById(int id)
     {
         var workerDto = _workerRepository.GetById(id);
-        if (workerDto!.Specialty == "Artist")
+        if (workerDto!.Specialty == "Актер")
         {
             var artistDto = _artistRepository.GetById(id);
-            return new Artist(workerDto.WorkerId, workerDto.Name, workerDto.Specialty, artistDto!.Grade);
+            return new Artist(workerDto.Id, workerDto.Name, workerDto.Specialty, artistDto!.Grade);
         }
-        return new Worker(workerDto.WorkerId, workerDto.Name, workerDto.Specialty);
+        return new Worker(workerDto.Id, workerDto.Name, workerDto.Specialty);
     }
 
     public IEnumerable<Worker> GetByIds(int[]? ids)
     {
+        if (ids == null || ids.Length == 0)
+            return [];
+        
+        ids = ids.Distinct().ToArray();
+        
         var dtos = _workerRepository.GetByIds(ids).ToList();
-        if(ids != null && dtos.Count < ids.Length) throw new EntityNotFoundException(nameof(HallDto));
-        var artistsIds = dtos.Where(x => x.Specialty == "Artist").Select(x => x.WorkerId);
+        if(ids != null && dtos.Count < ids.Length) throw new EntityNotFoundException(nameof(WorkerDto));
+        var artistsIds = dtos.Where(x => x.Specialty == "Актер").Select(x => x.Id);
         var artistDtos = _artistRepository.GetByIds(artistsIds.ToArray()).ToList();
-        var result = dtos.Where(dto => dto.Specialty != "Artist")
-            .Select(dto => new Worker(dto.WorkerId, dto.Name, dto.Specialty));
-        result = result.Union(dtos.Where(x => x.Specialty == "Artist").
-            Select(dto => new Artist(dto.WorkerId, dto.Name, dto.Specialty, artistDtos.Find(x => x.ArtistId == dto.WorkerId)!.Grade)));
+        var result = dtos.Where(dto => dto.Specialty != "Актер")
+            .Select(dto => new Worker(dto.Id, dto.Name, dto.Specialty));
+        result = result.Union(dtos.Where(x => x.Specialty == "Актер").
+            Select(dto => new Artist(dto.Id, dto.Name, dto.Specialty, artistDtos.Find(x => x.Id == dto.Id)!.Grade)));
         return result;
     }
 
     public IEnumerable<Worker> GetAll()
     {
         var dtos = _workerRepository.GetAll().ToList();
-        var artistsIds = dtos.Where(x => x.Specialty == "Artist").Select(x => x.WorkerId);
+        var artistsIds = dtos.Where(x => x.Specialty == "Актер").Select(x => x.Id);
         var artistDtos = _artistRepository.GetByIds(artistsIds.ToArray()).ToList();
-        var result = dtos.Where(dto => dto.Specialty != "Artist")
-            .Select(dto => new Worker(dto.WorkerId, dto.Name, dto.Specialty));
-        result = result.Union(dtos.Where(x => x.Specialty == "Artist").
-            Select(dto => new Artist(dto.WorkerId, dto.Name, dto.Specialty, artistDtos.Find(x => x.ArtistId == dto.WorkerId)!.Grade)));
+        var result = dtos.Where(dto => dto.Specialty != "Актер")
+            .Select(dto => new Worker(dto.Id, dto.Name, dto.Specialty));
+        result = result.Union(dtos.Where(x => x.Specialty == "Актер").
+            Select(dto => new Artist(dto.Id, dto.Name, dto.Specialty, artistDtos.Find(x => x.Id == dto.Id)!.Grade)));
         return result;
     }
 
-    public void Create(Worker entity)
+    public int Create(Worker entity)
     {
+        int res;
         if (entity is Artist artist)
         {
             string query = "SELECT * FROM add_artist(@Name, @Grade)";
@@ -64,7 +70,7 @@ public class WorkerRepository : IWorkerRepository
                 { "@Grade", artist.Grade }
             };
 
-            _workerRepository.ExecuteCommand(query, parameters);
+            res = _workerRepository.ExecuteScalar<int>(query, parameters);
         }
         else
         {
@@ -76,15 +82,16 @@ public class WorkerRepository : IWorkerRepository
                 { "@Specialty", entity.Specialty }
             };
 
-            _workerRepository.ExecuteCommand(query, parameters);
+            res = _workerRepository.ExecuteScalar<int>(query, parameters);
         }
+        return res;
     }
 
     public void Update(Worker entity)
     {
         var dto = new WorkerDto()
         {
-            WorkerId = entity.Id,
+            Id = entity.Id,
             Name = entity.Name,
             Specialty = entity.Specialty
         };
@@ -93,7 +100,7 @@ public class WorkerRepository : IWorkerRepository
         {
             var artistDto = new ArtistDto()
             {
-                ArtistId = artist.Id,
+                Id = artist.Id,
                 Grade = artist.Grade
             };
             _artistRepository.Update(artistDto);

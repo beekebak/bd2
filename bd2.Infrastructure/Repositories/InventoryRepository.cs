@@ -13,31 +13,35 @@ public class InventoryRepository(GenericRepository<InventoryDto> repository) : I
     {
         var inventory = _repository.GetById(id);
         if(inventory == null) throw new EntityNotFoundException(nameof(InventoryDto));
-        return new Inventory(inventory.InventoryName, inventory.InventoryId, inventory.TotalAmount);
+        return new Inventory(inventory.InventoryName, inventory.Id, inventory.TotalAmount);
     }
 
     public IEnumerable<Inventory> GetByIds(int[]? ids)
     {
+        if (ids == null || ids.Length == 0)
+            return [];
+        
+        ids = ids.Distinct().ToArray();
         var dtos = _repository.GetByIds(ids).ToList();
         if(ids != null && dtos.Count < ids.Length) throw new EntityNotFoundException(nameof(HallDto));
-        return dtos.Select(dto => new Inventory(dto.InventoryName, dto.InventoryId, dto.TotalAmount));
+        return dtos.Select(dto => new Inventory(dto.InventoryName, dto.Id, dto.TotalAmount));
     }
 
     public IEnumerable<Inventory> GetAll()
     {
         var dtos = _repository.GetAll();
-        return dtos.Select(dto => new Inventory(dto.InventoryName, dto.InventoryId, dto.TotalAmount));
+        return dtos.Select(dto => new Inventory(dto.InventoryName, dto.Id, dto.TotalAmount));
     }
 
-    public void Create(Inventory entity)
+    public int Create(Inventory entity)
     {
         var dto = new InventoryDto
         { 
             InventoryName = entity.Name,
-            InventoryId = entity.InventoryId,
+            Id = entity.InventoryId,
             TotalAmount = entity.TotalAmount
         };
-        _repository.Create(dto);
+        return _repository.Create(dto);
     }
 
     public void Update(Inventory entity)
@@ -45,7 +49,7 @@ public class InventoryRepository(GenericRepository<InventoryDto> repository) : I
         var dto = new InventoryDto
         { 
             InventoryName = entity.Name,
-            InventoryId = entity.InventoryId,
+            Id = entity.InventoryId,
             TotalAmount = entity.TotalAmount
         };
         _repository.Update(dto);
@@ -66,6 +70,6 @@ public class InventoryRepository(GenericRepository<InventoryDto> repository) : I
         };
 
         var dtos = _repository.ExecuteQuery<InventoryDto>(query, parameters);
-        return dtos.Select(dto => new Inventory(dto.InventoryName, dto.InventoryId, dto.TotalAmount));
+        return dtos.Select(dto => new Inventory(dto.InventoryName, dto.Id, dto.TotalAmount));
     }
 }

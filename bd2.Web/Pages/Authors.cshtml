@@ -1,0 +1,170 @@
+@page
+@model bd2.Web.Pages.AuthorsModel
+@Html.AntiForgeryToken()
+
+<h1>Авторы</h1>
+
+<button type="button" class="btn btn-success" onclick="showAddAuthorForm()">Добавить автора</button>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Имя автора</th>
+            <th>Композитор</th>
+            <th>Писатель</th>
+            <th>Действия</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var author in Model.AuthorsList)
+        {
+            <tr>
+                <td>@author.AuthorName</td>
+                <td>
+                    @if (author.Specialties.Any(s => s.SpecialtyName == "Композитор"))
+                    {
+                        <input type="checkbox" checked disabled />
+                    }
+                    else
+                    {
+                        <input type="checkbox" disabled />
+                    }
+                </td>
+                <td>
+                    @if (author.Specialties.Any(s => s.SpecialtyName == "Писатель"))
+                    {
+                        <input type="checkbox" checked disabled />
+                    }
+                    else
+                    {
+                        <input type="checkbox" disabled />
+                    }
+                </td>
+                <td>
+                    <button type="button" class="btn btn-danger" onclick="deleteAuthor(@author.Id)">Удалить</button>
+                    <button type="button" class="btn btn-primary" onclick="showUpdateForm(@author.Id, '@author.AuthorName',
+                    @author.Specialties.Any(s => s.SpecialtyName == "Композитор").ToString().ToLower(),
+                    @author.Specialties.Any(s => s.SpecialtyName == "Писатель").ToString().ToLower())">Изменить</button></td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div id="addAuthorForm" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid #ccc; z-index: 1000;">
+    <h2>Добавить автора</h2>
+    <form method="post" asp-page-handler="Add">
+        <div class="form-group">
+            <label for="AuthorName">Имя автора:</label>
+            <input type="text" class="form-control" id="addAuthorName" name="AuthorName" required>
+        </div>
+        <div class="form-group">
+            <label>Специальности:</label><br>
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="Composer" name="Specialties[]" value="Композитор">
+                <label class="form-check-label" for="Composer">Композитор</label>
+            </div>
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="Writer" name="Specialties[]" value="Писатель">
+                <label class="form-check-label" for="Writer">Писатель</label>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Добавить</button>
+        <button type="button" class="btn btn-secondary" onclick="hideAddAuthorForm()">Отмена</button>
+    </form>
+</div>
+
+<div id="updateForm" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid #ccc; z-index: 1000;">
+    <h2>Изменить автора</h2>
+    <form method="post" asp-page-handler="Update">
+        <input type="hidden" id="authorId" name="id" />
+        <div class="form-group">
+            <label for="AuthorName">Имя автора:</label>
+            <input type="text" class="form-control" id="updateAuthorName" name="AuthorName" required>
+        </div>
+        <div class="form-group">
+            <label>Специальности:</label><br>
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="updateComposer" name="Specialties[]" value="Композитор" />
+                <label class="form-check-label" for="updateComposer">Композитор</label>
+            </div>
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="updateWriter" name="Specialties[]" value="Писатель" />
+                <label class="form-check-label" for="updateWriter">Писатель</label>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <button type="button" class="btn btn-secondary" onclick="hideUpdateForm()">Отмена</button>
+    </form>
+</div>
+
+<div id="overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 999;"></div>
+
+<script>
+    function showAddAuthorForm() {
+        document.getElementById('addAuthorForm').style.display = 'block';
+        document.getElementById('overlay').style.display = 'block';
+    }
+
+    function hideAddAuthorForm() {
+        document.getElementById('addAuthorForm').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+    }
+
+    function deleteAuthor(authorId) {
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+        fetch(window.location.pathname + '?handler=Delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'RequestVerificationToken': token
+            },
+            body: new URLSearchParams({ authorId: authorId })
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Ошибка удаления автора.');
+            }
+        }).catch(error => {
+            alert('Ошибка сети при удалении автора.');
+            console.error('Fetch error:', error);
+        });
+    }
+
+    function showUpdateForm(authorId, authorName, isComposerChecked, isWriterChecked) {
+        document.getElementById('authorId').value = authorId;
+        document.getElementById('updateAuthorName').value = authorName;
+        document.getElementById('updateComposer').checked = isComposerChecked;
+        document.getElementById('updateWriter').checked = isWriterChecked;
+
+        if (isComposerChecked) {
+            document.getElementById('updateComposer').setAttribute('data-disabled', 'true');
+            document.getElementById('updateComposer').disabled = true;
+        }
+        if (isWriterChecked) {
+            document.getElementById('updateWriter').setAttribute('data-disabled', 'true');
+            document.getElementById('updateWriter').disabled = true;
+        }
+
+        document.getElementById('updateForm').style.display = 'block';
+        document.getElementById('overlay').style.display = 'block';
+    }
+
+    function hideUpdateForm() {
+        const composerCheckbox = document.getElementById('updateComposer');
+        const writerCheckbox = document.getElementById('updateWriter');
+
+        if (composerCheckbox.getAttribute('data-disabled') === 'true') {
+            composerCheckbox.disabled = false;
+            composerCheckbox.removeAttribute('data-disabled');
+        }
+
+        if (writerCheckbox.getAttribute('data-disabled') === 'true') {
+            writerCheckbox.disabled = false;
+            writerCheckbox.removeAttribute('data-disabled');
+        }
+
+        document.getElementById('updateForm').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+    }
+</script>

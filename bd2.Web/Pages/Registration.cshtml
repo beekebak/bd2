@@ -1,0 +1,62 @@
+@page
+@model RegistrationModel
+@{
+    ViewData["Title"] = "Registration";
+}
+
+<h2>Регистрация</h2>
+
+<div class="container">
+    @if (User.IsInRole("director"))
+    {
+        <h3>Добавить пользователя</h3>
+        <form method="post" asp-page-handler="AddUser">
+            <div class="form-group">
+                <label for="Login">Логин</label>
+                <input type="text" id="Login" name="Login" class="form-control" required/>
+            </div>
+            <div class="form-group">
+                <label for="Password">Пароль</label>
+                <input type="password" id="Password" name="Password" class="form-control" required/>
+            </div>
+            <div class="form-group">
+                <label for="Role">Роль</label>
+                <select id="Role" name="Role" class="form-control" required>
+                    <option value="director">Директор</option>
+                    <option value="manager">Администратор</option>
+                    <option value="storekeeper">Заведующий складом</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Добавить пользователя</button>
+        </form>
+    }
+    <hr/>
+
+    <h3>Изменить пароль</h3>
+    <form method="post" asp-page-handler="ChangePassword">
+        <div class="form-group">
+            <label for="OldPassword">Старый пароль</label>
+            <input type="password" id="OldPassword" name="OldPassword" class="form-control" required/>
+        </div>
+        <div class="form-group">
+            <label for="NewPassword">Новый пароль</label>
+            <input type="password" id="NewPassword" name="NewPassword" class="form-control" required/>
+        </div>
+        <div class="form-group">
+            <label for="Login">Логин</label>
+            <input type="text" id="Login" name="Login" class="form-control" required/>
+        </div>
+        @if (User.IsInRole("director"))
+        {
+            <div class="form-group">
+                <label for="Role">Роль</label>
+                <select id="Role" name="Role" class="form-control" required>
+                    <option value="director">Директор</option>
+                    <option value="manager">Администратор</option>
+                    <option value="storekeeper">Заведующий складом</option>
+                </select>
+            </div>
+        }
+        <button type="submit" class="btn btn-primary">Изменить пароль</button>
+    </form>
+</div>

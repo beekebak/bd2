@@ -1,0 +1,263 @@
+@page
+@model bd2.Web.Pages.StagingModel
+@Html.AntiForgeryToken()
+
+<h1>Постановка: @Model.Staging.Origin.OriginName</h1>
+
+<table class="table">
+    <tbody>
+    <tr>
+        <th>Длительность</th>
+        <td>@Model.Staging.Duration</td>
+    </tr>
+    <tr>
+        <th>Режиссер</th>
+        <td>
+            @if (User.IsInRole("guest"))
+            {
+                @Model.Staging.Director.Name
+            }
+            else
+            {
+                <a href="/Workers">@Model.Staging.Director.Name</a>
+            }
+        </td>
+    </tr>
+    <tr>
+        <th>Композитор</th>
+        <td>
+            @if (User.IsInRole("guest"))
+            {
+                @Model.Staging.StagingComposer.Name
+            }
+            else
+            {
+                <a href="/Workers">@Model.Staging.StagingComposer.Name</a>
+            }
+        </td>
+    </tr>
+    <tr>
+        <th>Первоисточник</th>
+        <td>
+            @if (User.IsInRole("guest"))
+            {
+                @Model.Staging.Origin.OriginName
+            }
+            else
+            {
+                <a href="/Origins">@Model.Staging.Origin.OriginName</a>
+            }
+        </td>
+    </tr>
+    <tr>
+        <th>Роли</th>
+        <td>
+            <ul>
+                @foreach (var role in Model.Staging.Roles)
+                {
+                    <li>@role.Name</li>
+                }
+            </ul>
+        </td>
+    </tr>
+    @if (!User.IsInRole("guest"))
+    {
+        <tr>
+            <th>Инвентарь</th>
+            <td>
+                <ul>
+                    @foreach (var item in Model.Staging.Inventory)
+                    {
+                        <li><a href="/Inventory">@item.Key.Name</a>: @item.Value</li>
+                    }
+                </ul>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+
+
+@if (!User.IsInRole("guest"))
+{
+    <button type="button" class="btn btn-primary" onclick="showUpdateStagingForm()">Изменить постановку</button>
+
+    <div id="updateStagingForm"
+         style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid #ccc; z-index: 1000; max-height: 80vh; overflow-y: auto;">
+        <h2>Изменить постановку</h2>
+        <form method="post" asp-page-handler="Update">
+            <input type="hidden" name="StagingId" value="@Model.Staging.Id"/>
+
+            <div class="form-group">
+                <label for="Duration">Длительность:</label>
+                <input type="time" class="form-control" id="updateDuration" name="Duration"
+                       value="@Model.Staging.Duration" required>
+            </div>
+
+            <div class="form-group">
+                <label for="DirectorId">Режиссер:</label>
+                <select class="form-control" id="updateDirectorId" name="DirectorId">
+                    <option value="">Выберите режиссера</option>
+                    @foreach (var worker in Model.WorkerList.Where(w => w.Specialty == "Режиссер"))
+                    {
+                        <option value="@worker.Id"
+                                selected="@(worker.Id == Model.Staging.Director.Id ? "selected" : null)">@worker.Name</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="StagingComposerId">Композитор:</label>
+                <select class="form-control" id="updateStagingComposerId" name="StagingComposerId">
+                    <option value="">Выберите композитора</option>
+                    @foreach (var worker in Model.WorkerList.Where(w => w.Specialty == "Композитор"))
+                    {
+                        <option value="@worker.Id"
+                                selected="@(worker.Id == Model.Staging.StagingComposer.Id ? "selected" : null)">@worker.Name</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="OriginId">Первоисточник:</label>
+                <select class="form-control" id="updateOriginId" name="OriginId">
+                    <option value="">Выберите первоисточник</option>
+                    @foreach (var origin in Model.OriginList)
+                    {
+                        <option value="@origin.OriginId"
+                                selected="@(origin.OriginId == Model.Staging.Origin.OriginId ? "selected" : null)">@origin.OriginName</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Роли:</label>
+                <div id="updateRolesContainer">
+                    @foreach (var role in Model.Staging.Roles)
+                    {
+                        <div class="input-group mb-2">
+                            <input type="text" class="form-control" name="Roles[]" value="@role.Name" required>
+                            <div class="input-group-append">
+                                <button type="button" class="btn btn-danger removeRole">-</button>
+                            </div>
+                        </div>
+                    }
+                    <div class="input-group mb-2">
+                        <input type="text" class="form-control" name="Roles[]" placeholder="Название роли" required>
+                        <div class="input-group-append">
+                            <button type="button" class="btn btn-success addRole">+</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Инвентарь:</label>
+                <div id="updateInventoryContainer">
+                    @foreach (var item in Model.Staging.Inventory)
+                    {
+                        <div class="input-group mb-2">
+                            <select class="form-control inventorySelect" name="InventoryKeys[]" required>
+                                <option value="">Выберите инвентарь</option>
+                                @foreach (var inventory in Model.InventoryList)
+                                {
+                                    <option value="@inventory.InventoryId"
+                                            selected="@(inventory.InventoryId == item.Key.InventoryId ? "selected" : null)">@inventory.Name</option>
+                                }
+                            </select>
+                            <input type="number" class="form-control" name="InventoryValues[]" value="@item.Value"
+                                   required>
+                            <div class="input-group-append">
+                                <button type="button" class="btn btn-danger removeInventory">-</button>
+                            </div>
+                        </div>
+                    }
+                    <div class="input-group mb-2">
+                        <select class="form-control inventorySelect" name="InventoryKeys[]" required>
+                            <option value="">Выберите инвентарь</option>
+                            @foreach (var inventory in Model.InventoryList)
+                            {
+                                <option value="@inventory.InventoryId">@inventory.Name</option>
+                            }
+                        </select>
+                        <input type="number" class="form-control" name="InventoryValues[]" placeholder="Количество"
+                               required>
+                        <div class="input-group-append">
+                            <button type="button" class="btn btn-success addInventory">+</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+            <button type="button" class="btn btn-secondary" onclick="hideUpdateStagingForm()">Отмена</button>
+        </form>
+    </div>
+}
+
+<div id="overlay"
+     style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 999;"></div>
+
+<script>
+    document.addEventListener('click', function (event) {
+        if (event.target.classList.contains('addRole')) {
+            const rolesContainer = document.getElementById('updateRolesContainer');
+            const addButton = rolesContainer.querySelector('.addRole').closest('.input-group');
+            const newInputGroup = document.createElement('div');
+            newInputGroup.className = 'input-group mb-2';
+            newInputGroup.innerHTML = `
+                <input type="text" class="form-control" name="Roles[]" placeholder="Название роли" required>
+                <div class="input-group-append">
+                    <button type="button" class="btn btn-danger removeRole">-</button>
+                </div>
+            `;
+            rolesContainer.insertBefore(newInputGroup, addButton);
+        }
+
+        if (event.target.classList.contains('removeRole')) {
+            event.target.closest('.input-group').remove();
+        }
+
+        if (event.target.classList.contains('addInventory')) {
+            const inventoryContainer = document.getElementById('updateInventoryContainer');
+            const addButton = inventoryContainer.querySelector('.addInventory').closest('.input-group');
+            const newInputGroup = document.createElement('div');
+            newInputGroup.className = 'input-group mb-2';
+            newInputGroup.innerHTML = `
+                <select class="form-control inventorySelect" name="InventoryKeys[]" required>
+                    <option value="">Выберите инвентарь</option>
+                    
+            
+            
+            @foreach (var inventory in Model.InventoryList)
+            {
+                <option value="@inventory.InventoryId">@inventory.Name</option>
+            }
+            
+                        
+                                    
+                                                    </select>
+                                                    <input type="number" class="form-control" name="InventoryValues[]" placeholder="Количество" required>
+                                                    <div class="input-group-append">
+                                                        <button type="button" class="btn btn-danger removeInventory">-</button>
+                                                    </div>
+`;
+            inventoryContainer.insertBefore(newInputGroup, addButton);
+        }
+
+        if (event.target.classList.contains('removeInventory')) {
+            event.target.closest('.input-group').remove();
+        }
+    });
+
+    function showUpdateStagingForm() {
+        document.getElementById('updateStagingForm').style.display = 'block';
+        document.getElementById('overlay').style.display = 'block';
+    }
+
+    function hideUpdateStagingForm() {
+        document.getElementById('updateStagingForm').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+    }
+
+</script>

@@ -1,0 +1,207 @@
+@page
+@using System.Globalization
+@model bd2.Web.Pages.PerformanceModel
+@Html.AntiForgeryToken()
+
+<h1>Представление: @Model.Performance.Staging.Origin.OriginName</h1>
+
+<table class="table">
+    <tbody>
+        <tr>
+            <th>Дата</th>
+            <td>@Model.Performance.StartDate.ToString(CultureInfo.InvariantCulture)</td>
+        </tr>
+        <tr>
+            <th>Длительность</th>
+            <td>@Model.Performance.Staging.Duration.ToString(CultureInfo.InvariantCulture)</td>
+        </tr>
+        <tr>
+            <th>Постановка</th>
+            <td>
+                <a href="/Staging?id=@Model.Performance.Staging.Id">@Model.Performance.Staging.Origin.OriginName</a>
+            </td>
+        </tr>
+        <tr>
+            <th>Режиссер постановки</th>
+            <td>
+                @if (!User.IsInRole("guest"))
+                {
+                    <a href="/Workers">@Model.Performance.Staging.Director.Name</a>
+                }
+                else
+                {
+                    @Model.Performance.Staging.Director.Name
+                }
+            </td>
+        </tr>
+        <tr>
+            <th>Композитор постановки</th>
+            <td>
+                @if (!User.IsInRole("guest"))
+                {
+                    <a href="/Workers">@Model.Performance.Staging.StagingComposer.Name</a>
+                }
+                else
+                {
+                    @Model.Performance.Staging.StagingComposer.Name
+                }
+            </td>
+        </tr>
+        <tr>
+            <th>Место проведения</th>
+            <td>
+                @if (!User.IsInRole("guest"))
+                {
+                    <a href="/Halls">@Model.Performance.Hall.HallId Зал</a>
+                }
+                else
+                {
+                    @($"{Model.Performance.Hall.HallId} Зал")
+                }
+            </td>
+        </tr>
+        <tr>
+            <th>Оставшееся количество билетов</th>
+            <td>@(Model.Performance.Hall.Capacity - Model.Performance.SoldTicketsCount)</td>
+        </tr>
+        <tr>
+            <th>Роли</th>
+            <td>
+                <ul>
+                    @foreach (var role in Model.Roles)
+                    {
+                        <li>
+                            @role.Value.Name: 
+                            @if (!User.IsInRole("guest"))
+                            {
+                                <a href="/Workers">@role.Key.Name</a>
+                            }
+                            else
+                            {
+                                @role.Key.Name
+                            }
+
+                            @if (!User.IsInRole("guest"))
+                            {
+                                <button type="button" class="btn btn-sm btn-primary" onclick="showUpdateArtistRoleForm(@Model.Performance.Id, @role.Value.Id)">Изменить</button>
+                            }
+                        </li>
+                    }
+                </ul>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+@if (User.IsInRole("guest"))
+{
+    <button type="button" class="btn btn-success" onclick="buyTicket(@Model.Performance.Id)">Купить билет</button>
+    <button type="button" class="btn btn-warning" onclick="returnTicket(@Model.Performance.Id)">Вернуть билет</button>
+}
+@if (!User.IsInRole("guest"))
+{
+    <button type="button" class="btn btn-info" onclick="showUpdateHallForm()">Изменить зал</button>
+
+    <div id="updateHallForm" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid #ccc; z-index: 1000;">
+        <h2>Изменить зал</h2>
+        <form method="post" asp-page-handler="UpdateHall">
+            <input type="hidden" name="PerformanceId" value="@Model.Performance.Id" />
+            <div class="form-group">
+                <label for="HallId">Зал:</label>
+                <select class="form-control" name="HallId">
+                    @foreach (var hall in Model.Halls)
+                    {
+                        <option value="@hall.HallId">@hall.HallId Зал</option>
+                    }
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+            <button type="button" class="btn btn-secondary" onclick="hideUpdateHallForm()">Отмена</button>
+        </form>
+    </div>
+
+    <div id="updateArtistRoleForm" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid #ccc; z-index: 1000;">
+        <h2>Изменить артиста на роль</h2>
+        <form method="post" asp-page-handler="UpdateArtistRole">
+            <input type="hidden" name="PerformanceId" id="artistRolePerformanceId" />
+            <input type="hidden" name="RoleId" id="artistRoleId" />
+            <div class="form-group">
+                <label for="ArtistId">Артист:</label>
+                <select class="form-control" name="ArtistId">
+                    @foreach (var artist in Model.Artists)
+                    {
+                        <option value="@artist.Id">@artist.Name</option>
+                    }
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+            <button type="button" class="btn btn-secondary" onclick="hideUpdateArtistRoleForm()">Отмена</button>
+        </form>
+    </div>
+
+    <div id="overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 999;"></div>
+}
+
+<script>
+    function buyTicket(performanceId) {
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+        fetch(`/Performance?handler=BuyTicket&performanceId=${performanceId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'RequestVerificationToken': token
+            }
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Ошибка покупки билета.');
+            }
+        }).catch(error => {
+            alert('Ошибка сети при покупке билета.');
+            console.error('Fetch error:', error);
+        });
+    }
+
+    function returnTicket(performanceId) {
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+        fetch(`/Performance?handler=ReturnTicket&performanceId=${performanceId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'RequestVerificationToken': token
+            }
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Ошибка возврата билета.');
+            }
+        }).catch(error => {
+            alert('Ошибка сети при возврате билета.');
+            console.error('Fetch error:', error);
+        });
+    }
+
+    function showUpdateHallForm() {
+        document.getElementById('updateHallForm').style.display = 'block';
+        document.getElementById('overlay').style.display = 'block';
+    }
+
+    function hideUpdateHallForm() {
+        document.getElementById('updateHallForm').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+    }
+
+    function showUpdateArtistRoleForm(performanceId, roleId) {
+        document.getElementById('artistRolePerformanceId').value = performanceId;
+        document.getElementById('artistRoleId').value = roleId;
+        document.getElementById('updateArtistRoleForm').style.display = 'block';
+        document.getElementById('overlay').style.display = 'block';
+    }
+
+    function hideUpdateArtistRoleForm() {
+        document.getElementById('updateArtistRoleForm').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+    }
+</script>

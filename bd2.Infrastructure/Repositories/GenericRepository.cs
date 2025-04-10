@@ -56,6 +56,7 @@ public class GenericRepository<T>(IDbConnection connection) : IGenericRepository
         if (ids == null || ids.Length == 0)
             return [];
 
+        ids = ids.Distinct().ToArray();
         var entities = new List<T>();
 
         using var command = connection.CreateCommand();
@@ -143,7 +144,7 @@ public class GenericRepository<T>(IDbConnection connection) : IGenericRepository
         return list;
     }
 
-    public void Create(T entity)
+    public int Create(T entity)
     {
         var properties = typeof(T).GetProperties()
             .Where(p => !string.Equals(p.Name, "Id", StringComparison.OrdinalIgnoreCase))
@@ -153,7 +154,7 @@ public class GenericRepository<T>(IDbConnection connection) : IGenericRepository
         var paramNames = string.Join(", ", properties.Select(p => "@" + p.Name));
 
         using var command = connection.CreateCommand();
-        command.CommandText = $"INSERT INTO {_tableName} ({columnNames}) VALUES ({paramNames})";
+        command.CommandText = $"INSERT INTO {_tableName} ({columnNames}) VALUES ({paramNames}) RETURNING ID";
 
         foreach (var prop in properties)
         {
@@ -166,8 +167,9 @@ public class GenericRepository<T>(IDbConnection connection) : IGenericRepository
         if (connection.State != ConnectionState.Open)
             connection.Open();
 
-        command.ExecuteNonQuery();
+        var res = (int)command.ExecuteScalar()!;
         connection.Close();
+        return res;
     }
 
     public void Update(T entity)
@@ -298,9 +300,10 @@ public class GenericRepository<T>(IDbConnection connection) : IGenericRepository
         return list;
     }
 
-    public TScalar ExecuteScalar<TScalar>(string commandText, Dictionary<string, object>? parameters = null)
+    public TScalar? ExecuteScalar<TScalar>(string commandText, Dictionary<string, object>? parameters = null)
     {
         using var command = connection.CreateCommand();
+        command.CommandText = commandText;
         if (parameters != null)
         {
             foreach (var param in parameters)
@@ -311,7 +314,10 @@ public class GenericRepository<T>(IDbConnection connection) : IGenericRepository
                 command.Parameters.Add(parameter);
             }
         }
+        if (connection.State != ConnectionState.Open)
+            connection.Open();
         var result = command.ExecuteScalar();
+        connection.Close();
         return result == DBNull.Value ? default : (TScalar)Convert.ChangeType(result, typeof(TScalar));
     }
 }

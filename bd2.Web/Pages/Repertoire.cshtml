@@ -1,0 +1,55 @@
+@page
+@model bd2.Web.Pages.RepertoireModel
+@Html.AntiForgeryToken()
+
+<h1>Постановки</h1>
+
+<form method="get">
+    <div class="form-group">
+        <label for="OriginName">Название первоисточника:</label>
+        <input type="text" class="form-control" name="OriginName" value="@Model.Filter.OriginName" />
+    </div>
+    <div class="form-group">
+        <label for="ComposerName">Имя композитора:</label>
+        <input type="text" class="form-control" name="ComposerName" value="@Model.Filter.ComposerName" />
+    </div>
+    <div class="form-group">
+        <label for="WriterName">Имя автора:</label>
+        <input type="text" class="form-control" name="WriterName" value="@Model.Filter.WriterName" />
+    </div>
+    <div class="form-group">
+        <label for="StagingComposerName">Имя композитора постановки:</label>
+        <input type="text" class="form-control" name="StagingComposerName" value="@Model.Filter.StagingComposerName" />
+    </div>
+    <div class="form-group">
+        <label for="DirectorName">Имя режиссера:</label>
+        <input type="text" class="form-control" name="DirectorName" value="@Model.Filter.DirectorName" />
+    </div>
+    <button type="submit" class="btn btn-primary">Фильтровать</button>
+</form>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Название первоисточника</th>
+            <th>Композитор</th>
+            <th>Автор</th>
+            <th>Композитор постановки</th>
+            <th>Режиссер</th>
+            <th>Длительность</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var staging in Model.Stagings)
+        {
+            <tr>
+                <td>@staging.OriginName</td>
+                <td>@staging.ComposerOriginName</td>
+                <td>@staging.WriterName</td>
+                <td>@staging.ComposerName</td>
+                <td>@staging.DirectorName</td>
+                <td>@staging.Duration</td>
+            </tr>
+        }
+    </tbody>
+</table>

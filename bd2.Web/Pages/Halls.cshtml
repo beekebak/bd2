@@ -1,0 +1,100 @@
+@page
+@model bd2.Web.Pages.HallsModel
+@Html.AntiForgeryToken()
+
+<h1>Залы</h1>
+
+<button type="button" class="btn btn-success" onclick="showAddForm()">Добавить зал</button>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Вместимость</th>
+            <th>Действия</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var hall in Model.HallsList)
+        {
+            <tr>
+                <td>@hall.Capacity</td>
+                <td>
+                    <button type="button" class="btn btn-danger" onclick="deleteHall(@hall.HallId)">Удалить</button>
+                    <button type="button" class="btn btn-primary" onclick="showUpdateForm(@hall.HallId, @hall.Capacity)">Изменить</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div id="addForm" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid #ccc; z-index: 1000;">
+    <h2>Добавить зал</h2>
+    <form method="post" asp-page-handler="Add">
+        <div class="form-group">
+            <label for="Capacity">Вместимость:</label>
+            <input type="number" class="form-control" id="addCapacity" name="Capacity" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Добавить</button>
+        <button type="button" class="btn btn-secondary" onclick="hideAddForm()">Отмена</button>
+    </form>
+</div>
+
+<div id="updateForm" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid #ccc; z-index: 1000;">
+    <h2>Изменить зал</h2>
+    <form method="post" asp-page-handler="Update">
+        <input type="hidden" id="hallId" name="hallId" />
+        <div class="form-group">
+            <label for="Capacity">Вместимость:</label>
+            <input type="number" class="form-control" id="updateCapacity" name="Capacity" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <button type="button" class="btn btn-secondary" onclick="hideUpdateForm()">Отмена</button>
+    </form>
+</div>
+
+<div id="overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 999;"></div>
+
+<script>
+    function deleteHall(hallId) {
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+        fetch(window.location.pathname + '?handler=Delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'RequestVerificationToken': token
+            },
+            body: new URLSearchParams({ hallId: hallId })
+        }).then(response => {
+            if (response.ok) {
+                location.reload(); // Перезагрузка страницы после удаления
+            } else {
+                alert('Ошибка удаления зала.');
+            }
+        }).catch(error => {
+            alert('Ошибка сети при удалении зала.');
+            console.error('Fetch error:', error);
+        });
+    }
+
+    function showUpdateForm(hallId, capacity) {
+        document.getElementById('hallId').value = hallId;
+        document.getElementById('updateCapacity').value = capacity;
+        document.getElementById('updateForm').style.display = 'block';
+        document.getElementById('overlay').style.display = 'block';
+    }
+
+    function hideUpdateForm() {
+        document.getElementById('updateForm').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+    }
+
+    function showAddForm() {
+        document.getElementById('addForm').style.display = 'block';
+        document.getElementById('overlay').style.display = 'block';
+    }
+
+    function hideAddForm() {
+        document.getElementById('addForm').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+    }
+</script>

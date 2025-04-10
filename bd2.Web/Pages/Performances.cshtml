@@ -1,0 +1,180 @@
+@page
+@model bd2.Web.Pages.PerformancesModel
+@Html.AntiForgeryToken()
+
+<h1>Представления</h1>
+
+@if (!User.IsInRole("guest"))
+{
+    <button type="button" class="btn btn-success" onclick="showAddForm()">Добавить представление</button>
+}
+
+<table class="table">
+    <thead>
+    <tr>
+        <th>Дата</th>
+        <th>Первоисточник</th>
+        <th>Место проведения</th>
+        @if (!User.IsInRole("guest"))
+        {
+            <th>Действия</th>
+        }
+    </tr>
+    </thead>
+    <tbody>
+    @foreach (var performance in Model.PerformanceList)
+    {
+        <tr>
+            <td>@performance.StartDate</td>
+            <td>
+                @if (!User.IsInRole("guest"))
+                {
+                    <a href="/Staging?id=@performance.Staging.Id">@performance.Staging.Origin.OriginName</a>
+                }
+                else
+                {
+                    @performance.Staging.Origin.OriginName
+                }
+            </td>
+            <td>
+                @if (!User.IsInRole("guest"))
+                {
+                    <a href="/Halls">@performance.Hall.HallId Зал</a>
+                }
+                else
+                {
+                    @($"{performance.Hall.HallId} Зал")
+                }
+            </td>
+            @if (!User.IsInRole("guest"))
+            {
+                <td>
+                    <button type="button" class="btn btn-danger" onclick="deletePerformance(@performance.Id)">Удалить</button>
+                    <button type="button" class="btn btn-primary" onclick="toPerformancePage(@performance.Id)">На страницу представления</button>
+                </td>
+            }
+            else
+            {
+                <td>
+                    <button type="button" class="btn btn-primary" onclick="toPerformancePage(@performance.Id)">На страницу представления</button>
+                </td>
+            }
+        </tr>
+    }
+    </tbody>
+</table>
+
+@if (!User.IsInRole("guest"))
+{
+    <div id="addForm" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid #ccc; z-index: 1000; max-height: 80vh; overflow-y: auto;">
+        <h2>Добавить представление</h2>
+        <form method="post" asp-page-handler="Add">
+            <div class="form-group">
+                <label for="date">Дата:</label>
+                <input type="date" class="form-control" name="date" required>
+            </div>
+            <div class="form-group">
+                <label for="startTime">Время начала:</label>
+                <input type="time" class="form-control" name="startTime" required>
+            </div>
+            <div class="form-group">
+                <label for="stagingId">Постановка:</label>
+                <select class="form-control" name="stagingId" id="stagingSelect" onchange="updateRoles()">
+                    <option value="">Выберите постановку</option>
+                    @foreach (var staging in Model.StagingList)
+                    {
+                        <option value="@staging.Id">@staging.Origin.OriginName</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="hallId">Место проведения:</label>
+                <select class="form-control" name="hallId">
+                    <option value="">Выберите место проведения</option>
+                    @foreach (var place in Model.HallList)
+                    {
+                        <option value="@place.HallId">@place.HallId</option>
+                    }
+                </select>
+            </div>
+
+            <div id="rolesContainer">
+                @* Роли будут добавлены здесь через JavaScript *@
+            </div>
+
+            <button type="submit" class="btn btn-primary">Добавить</button>
+            <button type="button" class="btn btn-secondary" onclick="hideAddForm()">Отмена</button>
+        </form>
+    </div>
+}
+
+<script>
+    function updateRoles() {
+        const stagingSelect = document.getElementById('stagingSelect');
+        const stagingId = stagingSelect.value;
+        const rolesContainer = document.getElementById('rolesContainer');
+        rolesContainer.innerHTML = ''; // Очищаем контейнер
+
+        if (stagingId) {
+            fetch(`/Performances?handler=GetRoles&stagingId=${stagingId}`)
+                .then(response => response.json())
+                .then(roles => {
+                    roles.forEach(role => {
+                        const roleDiv = document.createElement('div');
+                        roleDiv.className = 'form-group';
+                        roleDiv.innerHTML = `
+                            <label>${role.name}:</label>
+                            <select class="form-control" name="ActorIds[${role.id}]">
+                                <option value="">Выберите актера</option>
+                                @foreach (var artist in Model.ArtistList)
+                        {
+                            <option value="@artist.Id">@artist.Name</option>
+                        }
+                            </select>
+                        `;
+                        rolesContainer.appendChild(roleDiv);
+                    });
+                });
+        }
+    }
+</script>
+
+<div id="overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 999;"></div>
+
+<script>
+    function deletePerformance(performanceId) {
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+        fetch(window.location.pathname + '?handler=Delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'RequestVerificationToken': token
+            },
+            body: new URLSearchParams({ performanceId: performanceId })
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Ошибка удаления представления.');
+            }
+        }).catch(error => {
+            alert('Ошибка сети при удалении представления.');
+            console.error('Fetch error:', error);
+        });
+    }
+
+    function toPerformancePage(performanceId){
+        const url = `/Performance?id=`+performanceId;
+        window.location.href = url;
+    }
+
+    function showAddForm() {
+        document.getElementById('addForm').style.display = 'block';
+        document.getElementById('overlay').style.display = 'block';
+    }
+
+    function hideAddForm() {
+        document.getElementById('addForm').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+    }
+</script>

@@ -1,0 +1,27 @@
+@page
+@model bd2.Web.Pages.AuthorizationModel
+@Html.AntiForgeryToken()
+
+<h1>Авторизация</h1>
+
+<form method="post">
+    <div class="form-group">
+        <button type="submit" asp-page-handler="Guest" class="btn btn-secondary">Войти как гость</button>
+    </div>
+
+    <hr />
+
+    <div class="form-group">
+        <label for="login">Логин:</label>
+        <input type="text" class="form-control" id="login" name="login">
+    </div>
+
+    <div class="form-group">
+        <label for="password">Пароль:</label>
+        <input type="password" class="form-control" id="password" name="password">
+    </div>
+
+    <button type="submit" class="btn btn-primary">Войти</button>
+
+    <div asp-validation-summary="All" class="text-danger mt-3"></div>
+</form>

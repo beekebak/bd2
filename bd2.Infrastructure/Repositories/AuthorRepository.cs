@@ -5,7 +5,7 @@ using bd2.Core.StagingAggregate;
 
 namespace bd2.Infrastructure.Repositories;
 
-public class AuthorRepository(GenericRepository<AuthorDto> repository, GenericRepository<AuthorsSpecialtyDto> specialtyRepository) : IGenericRepository<Author>
+public class AuthorRepository(GenericRepository<AuthorDto> repository, GenericRepository<AuthorsSpecialtyDto> specialtyRepository) : IAuthorRepository
 {
     private GenericRepository<AuthorDto> _authorRepository = repository;
     private GenericRepository<AuthorsSpecialtyDto> _specialtyRepository = specialtyRepository;
@@ -24,6 +24,7 @@ public class AuthorRepository(GenericRepository<AuthorDto> repository, GenericRe
         if (ids == null || ids.Length == 0)
             return [];
             
+        ids = ids.Distinct().ToArray();
         var authorDtos = _authorRepository.GetByIds(ids).ToList();
         if(authorDtos.Count < ids.Length) throw new EntityNotFoundException(nameof(AuthorDto));
         return MapAuthorDtosToAuthors(authorDtos);
@@ -35,23 +36,36 @@ public class AuthorRepository(GenericRepository<AuthorDto> repository, GenericRe
         return MapAuthorDtosToAuthors(authorDtos);
     }
 
-    public void Create(Author entity)
+    public int Create(Author entity)
     {
         var authorDto = new AuthorDto
         {
             AuthorName = entity.AuthorName
         };
-        _authorRepository.Create(authorDto);
+        var id = _authorRepository.Create(authorDto);
+        var createdSpecialties = entity.Specialties
+            .Select(x => new AuthorsSpecialtyDto { AuthorId = id, SpecialtyName = x.SpecialtyName })
+            .Select(x => _specialtyRepository.Create(x)).ToList();
+        return id;
     }
 
     public void Update(Author entity)
     {
         var authorDto = new AuthorDto
         {
-            AuthorId = entity.id,
+            Id = entity.Id,
             AuthorName = entity.AuthorName
         };
         _authorRepository.Update(authorDto);
+    }
+
+    public void AddSpecialty(int authorId, string specialtyName)
+    {
+        _specialtyRepository.Create(new AuthorsSpecialtyDto
+        {
+            AuthorId = authorId,
+            SpecialtyName = specialtyName
+        });
     }
 
     public void Delete(int id)
@@ -63,18 +77,19 @@ public class AuthorRepository(GenericRepository<AuthorDto> repository, GenericRe
     {
         var specialtiesDto = _specialtyRepository.ExecuteQuery<AuthorsSpecialtyDto>(
             "SELECT * FROM AuthorsSpecialties WHERE AuthorId = @Id",
-            new Dictionary<string, object> { { "@Id", authorDto.AuthorId } }
+            new Dictionary<string, object> { { "@Id", authorDto.Id } }
         );
 
         var specialties = specialtiesDto.Select(s => new AuthorSpecialty(s.SpecialtyName)).ToList();
 
-        return new Author(authorDto.AuthorId, authorDto.AuthorName, specialties);
+        return new Author(authorDto.Id, authorDto.AuthorName, specialties);
     }
     
     private IEnumerable<Author> MapAuthorDtosToAuthors(IEnumerable<AuthorDto> authorDtos)
     {
         authorDtos = authorDtos.ToList();
-        var authorIds = authorDtos.Select(dto => dto.AuthorId).ToList();
+        if(!authorDtos.Any()) return [];
+        var authorIds = authorDtos.Select(dto => dto.Id).ToList();
 
         var specialtiesDtos = _specialtyRepository.ExecuteQuery<AuthorsSpecialtyDto>(
             $"SELECT * FROM AuthorsSpecialties WHERE AuthorId IN ({string.Join(",", authorIds)})"
@@ -83,6 +98,6 @@ public class AuthorRepository(GenericRepository<AuthorDto> repository, GenericRe
         var specialtiesByAuthorId = specialtiesDtos.GroupBy(dto => dto.AuthorId)
             .ToDictionary(group => group.Key, group => group.Select(s => new AuthorSpecialty(s.SpecialtyName)).ToList());
 
-        return authorDtos.Select(dto => new Author(dto.AuthorId, dto.AuthorName, specialtiesByAuthorId.GetValueOrDefault(dto.AuthorId, new List<AuthorSpecialty>())));
+        return authorDtos.Select(dto => new Author(dto.Id, dto.AuthorName, specialtiesByAuthorId.GetValueOrDefault(dto.Id, new List<AuthorSpecialty>())));
     }
 }
